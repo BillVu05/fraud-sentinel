@@ -1,0 +1,5 @@
+-r requirements.txt
+boto3==1.35.76
+pandas==2.2.3
+pytest==8.3.4
+ruff==0.8.4

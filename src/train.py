@@ -89,6 +89,32 @@ def vectorise(df, vocab, carry_state=None):
     return out, state_by_card
 
 
+# PSI needs the training distribution to bin against. A 10k sample per feature
+# is ample for 10 bins and keeps the file around 3MB; the full 470k rows would
+# be ~150MB for no extra resolution.
+DRIFT_SAMPLE_N = 10_000
+
+
+def save_train_distributions(X_train, path, seed=0):
+    """Reference distributions for governance/checks.py PSI.
+
+    Values are rounded to 4dp to match what handler.py writes into each
+    decision's feature_snapshot. Binning the two sides at different precision
+    would show as drift that is really just rounding.
+    """
+    rng = np.random.default_rng(seed)
+    n = min(DRIFT_SAMPLE_N, len(X_train))
+    rows = rng.choice(len(X_train), size=n, replace=False)
+    sample = X_train[rows]
+
+    dists = {
+        name: [round(float(v), 4) for v in sample[:, i]]
+        for i, name in enumerate(features.FEATURE_ORDER)
+    }
+    Path(path).write_text(json.dumps(dists))
+    print(f"wrote drift baseline: {n:,} rows x {len(dists)} features -> {path}")
+
+
 def precision_at_budget(y_true, scores, rate=ALERT_BUDGET_RATE):
     k = max(int(len(scores) * rate), 1)
     order = np.argsort(-scores)
@@ -159,6 +185,7 @@ def main():
     (ARTIFACTS / "feature_order.json").write_text(json.dumps(features.FEATURE_ORDER, indent=2))
     (ARTIFACTS / "vocab.json").write_text(json.dumps(vocab))
     (ARTIFACTS / "metrics.json").write_text(json.dumps(results, indent=2))
+    save_train_distributions(X_tr, ARTIFACTS / "train_distributions.json")
     pd.DataFrame({
         "TransactionID": hold_df.TransactionID.to_numpy(),
         "isFraud": y_ho,

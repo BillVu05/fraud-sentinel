@@ -79,12 +79,16 @@ production ML, not the model."*
 | `governance/model-card.md` | Written, `TBD` fields awaiting real numbers. |
 | `infra/*.tf` | Complete. Kinesis, Lambda, ECR, DynamoDB, S3, IAM, CloudWatch, billing alarm. |
 | `tests/test_parity.py` | 6 tests, passing. |
+| `tests/test_drift.py` | 7 tests, passing. Proves the PSI monitor fires. |
 | `run.ps1` | Complete. All tasks. |
 | `README.md` | Written, all metrics `TBD`. |
 
 ### Verified
 
-- `python -m pytest tests/ -q` → 6 passed
+- `python -m pytest tests/ -q` → 13 passed
+- Drift monitor verified firing: 0/35 features flagged on unshifted data,
+  `vel_amt_sum_24h` ALERT at PSI 2.44 on a +25 mean shift and 1.01 on a 3x
+  variance change
 - All Python compiles
 - Terraform files brace-balanced
 
@@ -203,13 +207,9 @@ nothing.
       estimate it
 - [ ] `.\run.ps1 destroy`
 
-### Known gap to close this week
-
-`governance/checks.py` needs `artifacts/train_distributions.json` as the PSI
-baseline, and `train.py` does not write it yet. Add roughly six lines to
-`train.py`: after vectorising the training set, dump a per-feature sample of
-`X_tr` column values to that path. Without it, `.\run.ps1 report` prints
-"drift: skipped".
+Drift works out of the box: `train.py` writes
+`artifacts/train_distributions.json` (10k sampled rows per feature) and
+`tests/test_drift.py` proves the monitor fires. Nothing to do here.
 
 ---
 
